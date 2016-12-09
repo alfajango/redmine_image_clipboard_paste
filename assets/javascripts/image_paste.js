@@ -4,7 +4,7 @@ function pasteImageName(e, name) {
     var text = '!' + name + '! ';
     var scrollPos = e.scrollTop;
     var method = ((e.selectionStart || e.selectionStart == '0') ? 1 : (document.selection ? 2 : false ) );
-    if (method == 2) { 
+    if (method == 2) {
         e.focus();
         var range = document.selection.createRange();
         range.moveStart ('character', -e.value.length);
@@ -12,15 +12,15 @@ function pasteImageName(e, name) {
     }
     else if (method == 1) strPos = e.selectionStart;
 
-    var front = (e.value).substring(0,strPos);  
-    var back = (e.value).substring(strPos,e.value.length); 
+    var front = (e.value).substring(0,strPos);
+    var back = (e.value).substring(strPos,e.value.length);
     if (front.length == 0 || front.slice(-1) == '\n') {
         e.value=front+text+back;
     } else {
         e.value=front+' '+text+back;
     }
     strPos = strPos + text.length;
-    if (method == 2) { 
+    if (method == 2) {
         e.focus();
         var range = document.selection.createRange();
         range.moveStart ('character', -e.value.length);
@@ -76,7 +76,7 @@ function getDataItems(clipboardData, editElement, event) {
             if(data.match(regexp)) {
                 alert('Your browser does not support pasting images from disk. Please use the upload form.');
             }
-            
+
         }
     }
 }
@@ -109,7 +109,7 @@ function processClipboardItems(clipboardData, editElement, event) {
             case 'image/tif':
                 ext = '.tiff';
                 break;
-            case 'image/bmp': 
+            case 'image/bmp':
             case'image/x-bmp':
             case 'image/x-ms-bmp':
                 ext = '.bmp';
@@ -131,68 +131,68 @@ function processClipboardItems(clipboardData, editElement, event) {
             event.stopPropagation();
             break;
         }
-        
+
     }
 
 }
 function preparePasteEvents() {
-    $('.wiki-edit').each(function(){
-            this.addEventListener('drop', function (e) {
-                if(typeof addFile === "function") {
-                    for (var file = 0; file<e.dataTransfer.files.length; file++)
-                    {
-                        if (e.dataTransfer.files[file].type.indexOf('image/') != -1)
-                        {
-                            var timestamp = Math.round(+new Date()/1000);
-                            var name = 'screenshot_'+addFile.nextAttachmentId+'_'+timestamp+'_'+e.dataTransfer.files[file].name.replace(/[ !"#%&\'()*:<=>?\[\\\]|]/g, '_');
-                            var blob = e.dataTransfer.files[file].slice();
-                            blob.name = name;
-                            uploadAndAttachFiles([blob], $('input:file.file_selector'));
-                            pasteImageName(this, name);
+    document.addEventListener('drop', function (e) {
+        if($(e.target).hasClass('wiki-edit') && typeof addFile === "function") {
+            for (var file = 0; file<e.dataTransfer.files.length; file++) {
+                if (e.dataTransfer.files[file].type.indexOf('image/') != -1) {
+                    var timestamp = Math.round(+new Date()/1000);
+                    var name = 'screenshot_'+addFile.nextAttachmentId+'_'+timestamp+'_'+e.dataTransfer.files[file].name.replace(/[ !"#%&\'()*:<=>?\[\\\]|]/g, '_');
+                    var blob = e.dataTransfer.files[file].slice();
+                    blob.name = name;
+                    uploadAndAttachFiles([blob], $('input:file.file_selector'));
+                    pasteImageName(e.target, name);
 
-                            e.preventDefault();
-                            e.stopPropagation();
-                            break;
-                        }
-                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    break;
                 }
-            });
-        });
-    $('.wiki-edit').bind('paste', function (e) {
-        var clipboardData;
-        if (document.attachEvent) clipboardData = window.clipboardData;
-        else clipboardData = e.clipboardData;
-        if(!clipboardData.items) {
-            getDataItems(clipboardData, this);
+            }
         }
-        else {
-            processClipboardItems(clipboardData, this,e);
+    }, true);
+
+    document.addEventListener('paste', function (e) {
+        if ($(e.target).hasClass('wiki-edit')) {
+          var clipboardData;
+          if (document.attachEvent) clipboardData = window.clipboardData;
+          else clipboardData = e.clipboardData;
+          if(!clipboardData.items) {
+              getDataItems(clipboardData, e.target);
+          }
+          else {
+              processClipboardItems(clipboardData, e.target, e);
+          }
         }
+    }, true);
 
-    });
-
-    $('form').has('.wiki-edit, #attachments_fields').bind('submit', function(e) {
-        var $form = $(this),
-            $textareas = $form.find('.wiki-edit'),
+    document.addEventListener('submit', function(e) {
+        var $form = $(e.target);
+        if (e.target.tagName == "form" && $form.has('.wiki-edit, #attachments_fields')) {
+          var $textareas = $form.find('.wiki-edit'),
             $attachments = $form.find("#attachments_fields span");
 
-        $textareas.each( function(i, textarea) {
-          var $textarea = $(textarea),
-              value = $textarea.val();
+          $textareas.each( function(i, textarea) {
+            var $textarea = $(textarea),
+                value = $textarea.val();
 
-          $attachments.each( function(i, attachment) {
-            var $attachment = $(attachment),
-                name = $attachment.find("input.filename").val(),
-                removeUrl = $attachment.find(".remove-upload").attr("href"),
-                match = removeUrl && removeUrl.match(/\/attachments\/([^\.js]+)/),
-                url = match && match[0];
+            $attachments.each( function(i, attachment) {
+              var $attachment = $(attachment),
+                  name = $attachment.find("input.filename").val(),
+                  removeUrl = $attachment.find(".remove-upload").attr("href"),
+                  match = removeUrl && removeUrl.match(/\/attachments\/([^\.js]+)/),
+                  url = match && match[0];
 
-            value = value.replace("!" + name + "!", "!" + url + "/" + name + "!")
+              value = value.replace("!" + name + "!", "!" + url + "/" + name + "!")
+            });
+
+            $textarea.val(value);
           });
-
-          $textarea.val(value);
-        });
-    });
+        }
+    }, true);
 
     uploadBlob = function (blob, uploadUrl, attachmentId, options) {
         var actualOptions = $.extend({
